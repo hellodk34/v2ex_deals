@@ -12,7 +12,6 @@ public enum NodeListDict {
     car("汽车", "car"),
     dns("DNS", "dns"),
     bike("骑行", "bike"),
-    nanjing("南京", "nanjing"),
     deals("优惠信息", "deals"),
     bb("宽带症候群", "bb");
 
