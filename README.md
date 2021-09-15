@@ -31,6 +31,13 @@ preview:
 
 # 部署
 
+使用 idea 导入此 maven 项目
+
+1. 修改 `NodeListDict.java`，添加自己关注的节点
+2. 设置自己的 `token` 和 `chatId`
+
+然后构建项目，将 target 文件夹下生成的 `v2-deals-1.0-SNAPSHOT-jar-with-dependencies.jar` 拷贝到任意路径，改名为 `app.jar`。由于 V 站现在被墙，建议直接在国外主机上运行程序。
+
 使用 crontab 一小时运行一次程序
 
 ```shell
