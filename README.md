@@ -1,7 +1,7 @@
 # v2ex_deals
 v2ex 优惠信息 节点新帖推送。**频道名称：`v2ex 优惠信息 新帖推送`，link: https://t.me/v2ex_deals**
 
-迫于总是错过 v2ex 上 `优惠信息` 节点的信息，创建了一个 `v2ex 优惠信息 新帖推送` 的 telegram channel. 欢迎关注。
+迫于总是错过 v2ex 上 `优惠信息` 节点的信息，创建了一个 `v2ex 优惠信息 新帖推送` 的 telegram channel. 欢迎关注/订阅频道。
 
 preview:
 
