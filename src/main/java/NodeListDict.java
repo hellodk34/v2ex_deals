@@ -51,6 +51,7 @@ public enum NodeListDict {
             if (item.getNodeCode().equals(nodeCode)) {
                 return true;
             }
+            return false;
         }
         return false;
     }
