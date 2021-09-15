@@ -32,8 +32,9 @@ public class MainService {
              * 优惠信息节点的 nodeCode 是 `deals`
              * `qna` 是 `问与答` 节点的 nodeCode
              * 自己部署的话可以修改源码重新编译，这里的判断条件可以变成你关注的各个节点。假如希望收到 `优惠信息` 和 `二手交易` （nodeCode is all4all）的帖子信息可以更改这里的条件
+             * 将自己喜欢的节点添加到 NodeListDict.java
              */
-            if ("deals".equals(nodeCode)) {
+            if (NodeListDict.nodeCodeMatch(nodeCode)) {
                 JSONObject jsonObject = getInfo(topic);
                 resultArray.add(jsonObject);
             }
@@ -101,13 +102,13 @@ public class MainService {
         /**
          * Add Telegram token (given Token is fake) channel token
          */
-        String apiToken = "191992291212:AAEMZfwetwerwersdfaaaasdfA_xNr6RumT9drJLwXfMBQ";
+        String apiToken = "1682323111366:AAHAygrgfssgsdgihPBhOv4FsdfaaabExSlM";
 
         /**
          * Add chatId (given chatId is fake)
          * channelId or chatId, if you are using channel, paste your channelId to following `chatId` field
          */
-        String chatId = "-100113211166775";
+        String chatId = "5060772234413";
 
         urlString = String.format(urlString, apiToken);
 
