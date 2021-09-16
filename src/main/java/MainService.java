@@ -16,12 +16,10 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author: hellodk
@@ -34,7 +32,7 @@ public class MainService implements Job {
     private static final String apiUrl = "https://www.v2ex.com/api/topics/latest.json";
 
     // 保证推送 url 唯一性的 map，保证一天之内不会重复推送
-    private static Map<String, String> map = new ConcurrentHashMap<>();
+    private static Map<String, String> map = new HashMap<>();
 
     private static Logger logger = LoggerFactory.getLogger(MainService.class);
 
@@ -98,25 +96,38 @@ public class MainService implements Job {
             Set<String> set = new HashSet<>(Arrays.asList(nodeArr));
             if (set.contains(nodeCode)) {
                 JSONObject jsonObject = getInfo(topic);
-                resultArray.add(jsonObject);
+                String url = jsonObject.getString("url");
+                /**
+                 * 如果缓存 map 中不包含这个 key
+                 * 说明是新的帖子，需要推送，执行 resultArray.add(jsonObject);
+                 * 然后将这个 key 添加到 map 中(map 中保存的就是已经推送过的帖子记录，一天之内的)
+                 */
+                if (!map.containsKey(url)) {
+                    resultArray.add(jsonObject);
+                    map.put(url, url);
+                }
             }
         }
 
         /**
          * 不要用 jsonArray.remove(object); 这种方式删除，可能会报出 ConcurrentModificationException
          */
-        Iterator<Object> it = resultArray.iterator();
-        while (it.hasNext()) {
-            JSONObject jo = (JSONObject) it.next();
-            String url = jo.getString("url");
-            if (!map.containsKey(url)) {
-                // 将 url 缓存到 map，作为 key 和 value，解决重复推送问题。value 没存储 jsonObject 对象而只存储了 url 是为了空间考虑
-                map.put(url, url);
-            }
-            else {
-                it.remove();
-            }
-        }
+
+        /**
+         *
+         Iterator<Object> it = resultArray.iterator();
+         while (it.hasNext()) {
+         JSONObject jo = (JSONObject) it.next();
+         String url = jo.getString("url");
+         if (!map.containsKey(url)) {
+         // 将 url 缓存到 map，作为 key 和 value，解决重复推送问题。value 没存储 jsonObject 对象而只存储了 url 是为了空间考虑
+         map.put(url, url);
+         }
+         else {
+         it.remove();
+         }
+         }
+         */
         if (resultArray.size() > 0) {
             logger.info(getNowTime() + " " + resultArray.toJSONString());
             sendToTelegram(resultArray);
@@ -211,7 +222,7 @@ public class MainService implements Job {
         // 发送 POST 请求
         HttpRequest.post(urlString)
                 .form(map)
-                .timeout(20000) // 设置请求 20s 超时
+                .timeout(60000) // 设置请求 60s 超时
                 .execute()
                 .body();
     }
