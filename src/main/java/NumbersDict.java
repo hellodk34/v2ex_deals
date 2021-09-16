@@ -2,7 +2,7 @@
 /**
  * @param * @param null:
  * @author hellodk
- * @description NumbersDict 映射阿拉伯数字到 emoji 数字字典
+ * @description NumbersDict 映射阿拉伯数字到 emoji 数字的字典
  * @date 9/15/2021 11:23 AM
  * @return
  */

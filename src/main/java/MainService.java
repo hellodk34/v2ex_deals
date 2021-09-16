@@ -1,13 +1,27 @@
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.CharsetUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author: hellodk
@@ -15,11 +29,59 @@ import java.util.Map;
  * @date: 9/14/2021 10:52 AM
  */
 
-public class MainService {
+public class MainService implements Job {
 
     private static final String apiUrl = "https://www.v2ex.com/api/topics/latest.json";
 
-    public static void main(String[] args) {
+    // 保证推送 url 唯一性的 map，保证一天之内不会重复推送
+    private static Map<String, String> map = new ConcurrentHashMap<>();
+
+    private static Logger logger = LoggerFactory.getLogger(MainService.class);
+
+    private static String token;
+
+    private static String chatId;
+
+    private static String nodeList;
+
+    // 时间间隔，每隔 24 小时清空 map，每天凌晨 1 点执行
+    private static final long PERIOD_OF_DAY = 24 * 60 * 60 * 1000;
+
+    /**
+     * 从配置文件中读取相关参数
+     */
+    static {
+        Map<String, Object> configMap = QuartzEntry.readConfigFile();
+        token = MapUtil.getStr(configMap, "token");
+        chatId = MapUtil.getStr(configMap, "chatId");
+        nodeList = MapUtil.getStr(configMap, "nodeList");
+    }
+
+    static {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, 1);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        Date date = calendar.getTime();
+        Timer timer = new Timer();
+        TimerTask timerTask = new TimerTask() {
+            // 每隔 24 小时清空 map，每天凌晨 1 点执行
+            @Override
+            public void run() {
+                // 清空 map 的目的是为了清除内存占用
+                map.clear();
+            }
+        };
+        timer.schedule(timerTask, date, PERIOD_OF_DAY);
+    }
+
+    @Override
+    public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+        this.entry();
+    }
+
+
+    public static void entry() {
 
         String response = HttpUtil.get(apiUrl, CharsetUtil.CHARSET_UTF_8);
         JSONArray arr = JSONArray.parseArray(response);
@@ -31,18 +93,37 @@ public class MainService {
             /**
              * 优惠信息节点的 nodeCode 是 `deals`
              * `qna` 是 `问与答` 节点的 nodeCode
-             * 自己部署的话可以修改源码重新编译，这里的判断条件可以变成你关注的各个节点。假如希望收到 `优惠信息` 和 `二手交易` （nodeCode is all4all）的帖子信息可以更改这里的条件
-             * 将自己喜欢的节点添加到 NodeListDict.java
              */
-            if (NodeListDict.nodeCodeMatch(nodeCode)) {
+            String[] nodeArr = nodeList.split(",");
+            Set<String> set = new HashSet<>(Arrays.asList(nodeArr));
+            if (set.contains(nodeCode)) {
                 JSONObject jsonObject = getInfo(topic);
                 resultArray.add(jsonObject);
             }
         }
-        if (resultArray.size() < 1) {
-            return;
+
+        /**
+         * 不要用 jsonArray.remove(object); 这种方式删除，可能会报出 ConcurrentModificationException
+         */
+        Iterator<Object> it = resultArray.iterator();
+        while (it.hasNext()) {
+            JSONObject jo = (JSONObject) it.next();
+            String url = jo.getString("url");
+            if (!map.containsKey(url)) {
+                // 将 url 缓存到 map，作为 key 和 value，解决重复推送问题。value 没存储 jsonObject 对象而只存储了 url 是为了空间考虑
+                map.put(url, url);
+            }
+            else {
+                it.remove();
+            }
         }
-        sendToTelegram(resultArray);
+        if (resultArray.size() > 0) {
+            logger.info(getNowTime() + " " + resultArray.toJSONString());
+            sendToTelegram(resultArray);
+        }
+        else {
+            logger.info(getNowTime() + " no new topics!");
+        }
 
     }
 
@@ -99,25 +180,11 @@ public class MainService {
 
         String urlString = "https://api.telegram.org/bot%s/sendMessage";
 
-        /**
-         * Add Telegram token (given Token is fake) channel token
-         */
-        String apiToken = "1682323111366:AAHAygrgfssgsdgihPBhOv4FsdfaaabExSlM";
-
-        /**
-         * Add chatId (given chatId is fake)
-         * channelId or chatId, if you are using channel, paste your channelId to following `chatId` field
-         */
-        String chatId = "5060772234413";
-
-        urlString = String.format(urlString, apiToken);
+        urlString = String.format(urlString, token);
 
         Map<String, Object> map = new HashMap<>();
         map.put("chat_id", chatId);
-        Date nowTime = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-        StringBuilder out = new StringBuilder("# ").append(sdf.format(nowTime)).append(" topics pushing").append("\r\n").append("\r\n");
+        StringBuilder out = new StringBuilder("# ").append(getNowTime()).append(" topics pushing").append("\r\n").append("\r\n");
         for (int i = 0; i < array.size(); i++) {
             JSONObject item = (JSONObject) array.get(i);
             String emojiSeq = getEmojiSeq(i + 1);
@@ -144,9 +211,22 @@ public class MainService {
         // 发送 POST 请求
         HttpRequest.post(urlString)
                 .form(map)
-                .timeout(20000)
+                .timeout(20000) // 设置请求 20s 超时
                 .execute()
                 .body();
+    }
+
+    /**
+     * @param * @param :
+     * @return java.lang.String
+     * @author hellodk
+     * @description 获取当前时间字符串 格式类似于 2021-09-16 15:07:25
+     * @date 9/16/2021 3:07 PM
+     */
+    private static String getNowTime() {
+        Date date = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return sdf.format(date);
     }
 
     /**

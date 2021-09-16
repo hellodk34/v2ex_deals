@@ -1,0 +1,13 @@
+# 申请的 telegram bot 的 token，长得像这样，`数字:字母`
+token=123456789:abcdEFGhijkLMN
+
+# bot 的 chatId
+chatId=1234567
+
+# cron 表达式，Java(String) 类型或者 Java(Quartz) 类型 参考网站 https://tool.lu/crontab/
+# 下面这是每一分钟请求一次 API，有新帖则推送，无则不推送
+cron=0 */1 * * * ?
+
+# 关注的节点列表，节点 code 可以通过 `https://www.v2ex.com/api/nodes/s2.json` 获取。
+# 用英文逗号/半角逗号分隔，已作 trim 处理，逗号后可添加空格（更容易看清楚）
+nodeList=qna, deals, bike, apple
