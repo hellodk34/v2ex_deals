@@ -15,18 +15,18 @@ preview:
 
 本程序已经更新成可以部署为个人关注的节点新帖推送的后端程序。前端只需要
 
-1. 申请一个 telegram bot
+1. 创建一个 telegram bot
 2. 获取 bot 的 `token`
 3. 获取 bot 的 `chatId`
 
-如何申请 telegram bot 请自行搜索（是很简单的）。
+如何创建 telegram bot 请自行搜索（是很简单的）。
 
 ## 配置文件说明
 
 配置文件的名字是可以随便命名的，比如 `config.txt`
 
 ```text
-# 申请的 telegram bot 的 token，长得像这样，`数字:字母`
+# 创建的 telegram bot 的 token，长得像这样，`数字:字母`
 token=123456789:abcdEFGhijkLMN
 
 # bot 的 chatId
