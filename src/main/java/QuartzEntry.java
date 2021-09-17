@@ -86,6 +86,7 @@ public class QuartzEntry {
                          * 允许 # 开头的注释行和空行
                          * 允许 key=value
                          * 只允许这两种形式，只用到 4 个 key-value pair
+                         * 其他情况均提示用户：read config file error, please check your config file
                          */
                         if (!ele.startsWith("#") && ele.contains("=")) {
                             String[] arr = ele.split("=");

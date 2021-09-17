@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author: hellodk
@@ -32,7 +33,7 @@ public class MainService implements Job {
     private static final String apiUrl = "https://www.v2ex.com/api/topics/latest.json";
 
     // 保证推送 url 唯一性的 map，保证一天之内不会重复推送
-    private static Map<String, String> map = new HashMap<>();
+    private static Map<String, String> map = new ConcurrentHashMap<>();
 
     private static Logger logger = LoggerFactory.getLogger(MainService.class);
 
@@ -41,6 +42,8 @@ public class MainService implements Job {
     private static String chatId;
 
     private static String nodeList;
+
+    private static Set<String> set;
 
     // 时间间隔，每隔 24 小时清空 map，每天凌晨 1 点执行
     private static final long PERIOD_OF_DAY = 24 * 60 * 60 * 1000;
@@ -53,6 +56,8 @@ public class MainService implements Job {
         token = MapUtil.getStr(configMap, "token");
         chatId = MapUtil.getStr(configMap, "chatId");
         nodeList = MapUtil.getStr(configMap, "nodeList");
+        String[] nodeArr = nodeList.split(",");
+        set = new HashSet<>(Arrays.asList(nodeArr));
     }
 
     static {
@@ -92,8 +97,6 @@ public class MainService implements Job {
              * 优惠信息节点的 nodeCode 是 `deals`
              * `qna` 是 `问与答` 节点的 nodeCode
              */
-            String[] nodeArr = nodeList.split(",");
-            Set<String> set = new HashSet<>(Arrays.asList(nodeArr));
             if (set.contains(nodeCode)) {
                 JSONObject jsonObject = getInfo(topic);
                 String url = jsonObject.getString("url");
