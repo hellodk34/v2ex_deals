@@ -254,7 +254,7 @@ public class MainService implements Job {
         JSONObject responseJSON = JSONObject.parseObject(response);
         if (responseJSON.getBoolean("ok").equals(Boolean.FALSE)) {
             StringBuilder newPost = new StringBuilder();
-            newPost.append("Pushing failed. It maybe caused by too much nodes matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
+            newPost.append("Pushing failed. It maybe caused by too much topic matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
                     .append("See API document: https://core.telegram.org/bots/api \r\n\r\n")
                     .append("Now push the version without content field.");
             map.put("text", newPost.toString());
