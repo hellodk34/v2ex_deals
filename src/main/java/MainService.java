@@ -34,6 +34,8 @@ public class MainService implements Job {
 
     private static final String apiUrl = "https://www.v2ex.com/api/topics/latest.json";
 
+    private static String urlString = "https://api.telegram.org/bot%s/sendMessage";
+
     // 保证推送 url 唯一性的 map，保证一天之内不会重复推送
     private static Map<String, String> map = new ConcurrentHashMap<>();
 
@@ -62,6 +64,7 @@ public class MainService implements Job {
         // 对每个节点做 trim 处理
         List<String> list = Arrays.stream(nodeArr).map(String::trim).collect(Collectors.toList());
         set = new HashSet<>(list);
+        urlString = String.format(urlString, token);
     }
 
     static {
@@ -92,6 +95,7 @@ public class MainService implements Job {
 
         String response = HttpUtil.get(apiUrl, CharsetUtil.CHARSET_UTF_8);
         JSONArray arr = JSONArray.parseArray(response);
+        logger.info("returned json array length is {}", arr.size());
         JSONArray resultArray = new JSONArray();
         for (int i = 0; i < arr.size(); i++) {
             JSONObject topic = (JSONObject) arr.get(i);
@@ -115,26 +119,6 @@ public class MainService implements Job {
                 }
             }
         }
-
-        /**
-         * 不要用 jsonArray.remove(object); 这种方式删除，可能会报出 ConcurrentModificationException
-         */
-
-        /**
-         *
-         Iterator<Object> it = resultArray.iterator();
-         while (it.hasNext()) {
-         JSONObject jo = (JSONObject) it.next();
-         String url = jo.getString("url");
-         if (!map.containsKey(url)) {
-         // 将 url 缓存到 map，作为 key 和 value，解决重复推送问题。value 没存储 jsonObject 对象而只存储了 url 是为了空间考虑
-         map.put(url, url);
-         }
-         else {
-         it.remove();
-         }
-         }
-         */
         if (resultArray.size() > 0) {
             logger.info(getNowTime() + " " + resultArray.toJSONString());
             sendToTelegram(resultArray);
@@ -196,17 +180,10 @@ public class MainService implements Job {
      */
     public static void sendToTelegram(JSONArray array) {
 
-        String urlString = "https://api.telegram.org/bot%s/sendMessage";
-
-        urlString = String.format(urlString, token);
-
-        Map<String, Object> map = new HashMap<>();
-        map.put("chat_id", chatId);
-        StringBuilder out = new StringBuilder("# ").append(getNowTime()).append(" topics pushing").append("\r\n").append("\r\n");
+        StringBuffer out = new StringBuffer("# ").append(getNowTime()).append(" topics pushing").append("\r\n").append("\r\n");
         for (int i = 0; i < array.size(); i++) {
             JSONObject item = (JSONObject) array.get(i);
-            String emojiSeq = getEmojiSeq(i + 1);
-            out.append("## topic ").append(emojiSeq).append("\r\n").append("\r\n");
+            out.append("## topic ").append(getEmojiSeq(i + 1)).append("\r\n").append("\r\n");
             out.append("- title: ").append(item.getString("title")).append("\r\n");
             out.append("- nodeName: ").append(item.getString("nodeName")).append("\r\n");
             out.append("- v2er: ").append(item.getString("v2er")).append("\r\n");
@@ -215,7 +192,7 @@ public class MainService implements Job {
             out.append("- content: `").append(item.getString("content")).append("`\r\n").append("\r\n");
         }
 
-        map.put("text", out.toString());
+        Map<String, Object> map = new HashMap<>();
         /**
          * parse_mode 取值有
          * 1. Markdown
@@ -225,13 +202,69 @@ public class MainService implements Job {
          * 经过测试 MarkdownV2 没有生效。Markdown 可用，但是支持的标签很有限
          */
         map.put("parse_mode", "Markdown");
+        map.put("chat_id", chatId);
         map.put("disable_web_page_preview", true);
-        // 发送 POST 请求
-        HttpRequest.post(urlString)
+        map.put("text", out.toString());
+        // 第一次正常发送 post 请求
+        Boolean ok = sendPostReq(map);
+        /**
+         * 如果第一次请求失败，推送不带 content 的信息给用户。
+         * 因为 content 是帖子正文，我希望它被推送，因为可以直接在 telegram 上预览内容，但是有些帖子的正文非常长，文字特别多，超过了 tg bot API 的 4096 characters 限制。
+         * 暂时没有想到很好的解决办法。
+         * 如果你有更好的想法，欢迎 fork 修改代码并提交 mr/pr
+         *
+         * 如果第一次正常发送 post 请求就成功了那么代码运行结束，等待下一次执行（根据 cron 规则）
+         * 下面开始第二次内容推送，不推送 content 字段，一般情况下不会超过 4096 字符数限制，一般都能正常推送
+         */
+        if (Boolean.FALSE.equals(ok)) {
+            StringBuffer newPost = new StringBuffer("# ").append(getNowTime()).append(" topics pushing without content").append("\r\n").append("\r\n");
+            for (int j = 0; j < array.size(); j++) {
+                JSONObject item = (JSONObject) array.get(j);
+                newPost.append("## topic ").append(getEmojiSeq(j + 1)).append("\r\n").append("\r\n");
+                newPost.append("- title: ").append(item.getString("title")).append("\r\n");
+                newPost.append("- nodeName: ").append(item.getString("nodeName")).append("\r\n");
+                newPost.append("- v2er: ").append(item.getString("v2er")).append("\r\n");
+                newPost.append("- url: ").append(item.getString("url")).append("\r\n");
+                newPost.append("- createdTime: ").append(item.getString("createdTime")).append("\r\n").append("\r\n");
+            }
+            map.put("text", newPost.toString());
+            Boolean infoTooMuch = sendPostReq(map);
+            /**
+             * 如果第二次尝试还是失败，提示用户信息量过大，无法推送
+             */
+            if (Boolean.FALSE.equals(infoTooMuch)) {
+                map.put("text", "too much information to preview!");
+                sendPostReq(map);
+            }
+        }
+    }
+
+    /**
+     * @param * @param map:
+     * @return java.lang.Boolean
+     * @author hellodk
+     * @description 真正发送 post 请求
+     * @date 9/18/2021 3:38 PM
+     */
+    private static Boolean sendPostReq(Map map) {
+        String response = HttpRequest.post(urlString)
                 .form(map)
-                .timeout(60000) // 设置请求 60s 超时
+                .timeout(30000) // 设置请求 30s 超时
                 .execute()
                 .body();
+        JSONObject responseJSON = JSONObject.parseObject(response);
+        if (responseJSON.getBoolean("ok").equals(false)) {
+            StringBuilder newPost = new StringBuilder();
+            newPost.append("Pushing failed. It maybe caused by too much nodes matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
+                    .append("See API document: https://core.telegram.org/bots/api \r\n\r\n")
+                    .append("Now push the version without content field.");
+            map.put("text", newPost.toString());
+            sendPostReq(map);
+            return false;
+        }
+        else {
+            return true;
+        }
     }
 
     /**
