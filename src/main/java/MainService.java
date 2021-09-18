@@ -95,7 +95,6 @@ public class MainService implements Job {
 
         String response = HttpUtil.get(apiUrl, CharsetUtil.CHARSET_UTF_8);
         JSONArray arr = JSONArray.parseArray(response);
-        logger.info("returned json array length is {}", arr.size());
         JSONArray resultArray = new JSONArray();
         for (int i = 0; i < arr.size(); i++) {
             JSONObject topic = (JSONObject) arr.get(i);
@@ -253,7 +252,7 @@ public class MainService implements Job {
                 .execute()
                 .body();
         JSONObject responseJSON = JSONObject.parseObject(response);
-        if (responseJSON.getBoolean("ok").equals(false)) {
+        if (responseJSON.getBoolean("ok").equals(Boolean.FALSE)) {
             StringBuilder newPost = new StringBuilder();
             newPost.append("Pushing failed. It maybe caused by too much nodes matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
                     .append("See API document: https://core.telegram.org/bots/api \r\n\r\n")
