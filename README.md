@@ -29,7 +29,7 @@ preview:
 
 目前第一次推送失败后推送的文案如下
 
-> Pushing failed. It maybe caused by too much nodes matched or too much content in some topic/post, which exceeds the telegram API request limit.
+> Pushing failed. It maybe caused by too many topics matched or too much content in some topic/post, which exceeds the telegram API request limit.
 >
 > See API document: https://core.telegram.org/bots/api 
 >
