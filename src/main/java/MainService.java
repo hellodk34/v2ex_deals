@@ -16,11 +16,13 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * @author: hellodk
@@ -57,7 +59,9 @@ public class MainService implements Job {
         chatId = MapUtil.getStr(configMap, "chatId");
         nodeList = MapUtil.getStr(configMap, "nodeList");
         String[] nodeArr = nodeList.split(",");
-        set = new HashSet<>(Arrays.asList(nodeArr));
+        // 对每个节点做 trim 处理
+        List<String> list = Arrays.stream(nodeArr).map(String::trim).collect(Collectors.toList());
+        set = new HashSet<>(list);
     }
 
     static {
