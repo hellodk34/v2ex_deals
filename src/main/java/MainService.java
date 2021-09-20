@@ -254,10 +254,22 @@ public class MainService implements Job {
         JSONObject responseJSON = JSONObject.parseObject(response);
         if (responseJSON.getBoolean("ok").equals(Boolean.FALSE)) {
             StringBuilder newPost = new StringBuilder();
-            newPost.append("Pushing failed. It maybe caused by too many topics matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
+            newPost.append(getNowTime())
+                    //.append(System.lineSeparator())
+                    .append(" Try pushing failed. It maybe caused by too many topics matched or too much content in some topic/post, which exceeds the telegram API request limit.\r\n\r\n")
                     .append("See API document: https://core.telegram.org/bots/api \r\n\r\n")
                     .append("Now push the version without content field.");
             map.put("text", newPost.toString());
+            /**
+             *
+             try {
+             // 休眠 3s 后再执行
+             Thread.sleep(3000);
+             }
+             catch (InterruptedException e) {
+             logger.warn("InterruptedException", e);
+             }
+             */
             sendPostReq(map);
             return false;
         }
