@@ -49,8 +49,8 @@ public class MainService implements Job {
 
     private static Set<String> set;
 
-    // 时间间隔，每隔 24 小时清空 map，每天凌晨 1 点执行
-    private static final long PERIOD_OF_DAY = 24 * 60 * 60 * 1000;
+    // 时间间隔，每隔 48 小时清空 map，凌晨 1 点执行
+    private static final long PERIOD_OF_DAY = 2 * 24 * 60 * 60 * 1000;
 
     /**
      * 从配置文件中读取相关参数
